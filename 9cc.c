@@ -29,6 +29,24 @@ struct Token
 // 現在着目しているトークン
 Token *token;
 
+// 入力された文字列
+char *user_input;
+
+// 第1引数でこの関数を呼んだトークンの位置(token->str)を受け取る。
+void error_at(char *loc, char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+
+    int pos = loc - user_input;
+    fprintf(stderr, "%s\n", user_input);
+    fprintf(stderr, "%*s", pos, " "); // pos個の空白を出力
+    fprintf(stderr, "^ ");
+    vfprintf(stderr, fmt, ap);
+    fprintf(stderr, "\n");
+    exit(1);
+}
+
 // エラーを報告するための関数(引数なしや複数個に対応)
 // printfと同じ引数を取る。
 // ...は可変長引数(stdarg.h)
@@ -65,7 +83,7 @@ void expect(char op)
 {
     if (token->kind != TK_RESERVED || token->str[0] != op)
     {
-        error("'%c'ではありません", op);
+        error_at(token->str, "'%c'ではありません", op);
     }
     token = token->next;
 }
@@ -76,7 +94,7 @@ int expect_number()
 {
     if (token->kind != TK_NUM)
     {
-        error("数ではありません");
+        error_at(token->str, "数ではありません");
     }
     int val = token->val;
     token = token->next;
@@ -102,8 +120,9 @@ Token *new_token(TokenKind kind, Token *cur, char *str)
 }
 
 // 入力文字列pをトークナイズしてそれを返す。
-Token *tokenize(char *p)
+Token *tokenize()
 {
+    char *p = user_input;
     // トークン列の先頭を中身は空で作る(ダミー)。
     Token head;
     head.next = NULL;
@@ -134,7 +153,7 @@ Token *tokenize(char *p)
             continue;
         }
 
-        error("トークナイズできません");
+        error_at(p, "トークナイズできません");
     }
 
     // トークン列の最後を表すトークンを生成
@@ -147,12 +166,12 @@ int main(int argc, char **argv)
 {
     if (argc != 2)
     {
-        error("引数の個数が正しくありません");
+        error("%s: 引数の個数が正しくありません", argv[0]);
         return 1;
     }
 
-    // トークナイズする
-    token = tokenize(argv[1]);
+    user_input = argv[1];
+    token = tokenize();
 
     // アセンブリの前半部分を出力
     printf(".intel_syntax noprefix\n");
